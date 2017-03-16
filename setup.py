@@ -4,7 +4,7 @@ try:
 except:
     from distutils.core import setup
 
-VERSION = '1.0.4'
+VERSION = '1.0.5'
 
 AUTHOR = "cn"
 
@@ -15,8 +15,10 @@ URL = "https://www.github.com/ShichaoMa/translate_html"
 NAME = "translate-html"
 
 DESCRIPTION = "translate html to chinese without tag. "
-
-LONG_DESCRIPTION = open("README.rst").read()
+try:
+    LONG_DESCRIPTION = open("README.rst").read()
+except UnicodeDecodeError:
+    LONG_DESCRIPTION = open("README.rst", encoding="utf-8").read()
 
 KEYWORDS = "translate html chinese tag"
 
