@@ -8,6 +8,6 @@ def custom_translate(src_data, proxies, src_template, self):
     :param src_template: 原生数据模板
     :return: 结果
     """
-    return "仅用来测试，无论翻译什么都是这句话"
+    return u"仅用来测试，无论翻译什么都是这句话"
 
 
