@@ -71,7 +71,7 @@ ubuntu@dev:~/myprojects/translate_html$ translate -pl proxy_list -pa xxxx:xxxxxx
 名称
 ```
 ### demo4
-# 在python代码中使用翻译
+在python代码中使用翻译
 ```
 Python 3.6.0 (default, Jan 16 2017, 16:10:53)
 [GCC 5.2.1 20151010] on linux
