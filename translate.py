@@ -11,33 +11,6 @@ from functools import wraps, partial
 from argparse import ArgumentParser
 
 
-def retry_wrapper(retry_times, error_handler=None):
-    """
-    重试装饰器
-    :param retry_times: 重试次数
-    :param error_handler: 重试异常处理函数
-    :return:
-    """
-    def out_wrapper(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            count = 0
-            while True:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    count += 1
-                    if error_handler:
-                        result = error_handler(func.__name__, count, e, *args, **kwargs)
-                        if result:
-                            count -= 1
-                    if count >= retry_times:
-                        raise
-        return wrapper
-
-    return out_wrapper
-
-
 class Translate:
     """
         翻译类
@@ -49,10 +22,10 @@ class Translate:
         "Accept-Language": "en-US,en;q=0.5",
     }
 
-    def __init__(self, proxy_list="./proxy.list", web_site="youdao,baidu", proxy_auth=None, retry_times=10, translate_timeout=5, load_module=None):
+    def __init__(self, proxy_list="./proxy.list", web_site="youdao,baidu",
+                 proxy_auth=None, retry_times=10, translate_timeout=5, load_module=None):
         self.web_site = web_site.split(",")
         self.proxy = {}
-        self.site_index = 0
         self.proxy_auth = proxy_auth
         self.retry_times = retry_times
         self.translate_timeout = translate_timeout
@@ -70,23 +43,13 @@ class Translate:
                     self.site_func[k] = v
 
     def __getattr__(self, item):
-
         if item in self.site_func:
             return partial(self.site_func[item], self=self)
         raise AttributeError(item)
 
     def proxy_choice(self):
-        """
-        顺序循环选取代理
-        :return: 代理
-        """
-        proxy = random.choice(self.proxy_list)
-
-        if proxy:
-            if self.proxy_auth:
-                return {"http": "http://%s@%s" % (self.proxy_auth, proxy)}
-            else:
-                return {"http": "http://%s"%proxy}
+        return self.proxy_list and self.proxy_list[0] and {"http": "http://%s%s"%(
+            "%s@"%self.proxy_auth if self.proxy_auth else "" , random.choice(self.proxy_list))}
 
     def trans_error_handler(self, func_name, retry_time, e, *args, **kwargs):
         """
@@ -98,18 +61,8 @@ class Translate:
         :param kwargs: 重试参数的参数
         :return: 当返回True时，该异常不会计入重试次数
         """
-        print("Error in %s for retry %s times. "
-                              "Error: %s"%(func_name, retry_time, e))
-        # 更新代理Ip
+        print("Error in %s for retry %s times. Error: %s"%(func_name, retry_time, e))
         args[1].update(self.proxy_choice())
-
-    def site_choice(self):
-        """
-        顺序循环选择翻译网站
-        :return: site
-        """
-        self.site_index += 1
-        return self.web_site[self.site_index%len(self.web_site)]
 
     def translate(self, src):
         """
@@ -128,18 +81,16 @@ class Translate:
                 # 将源中被抽离进行翻译的部分替换成`%s`， 如果被抽离部分没有实质内容（为空），则省略
                 src_template = re.sub(pattern, lambda x: "%s%s%s"%(
                     x.group(1), "%s" if x.group(2).strip() else "", x.group(3)), src)
-                return retry_wrapper(self.retry_times, self.trans_error_handler)(
+                return self.retry_wrapper(self.retry_times, self.trans_error_handler)(
                     self._translate)(src_data, self.proxy or self.proxy_choice(), src_template)
             else:
                 return src
         except Exception:
             print("Error in translate, finally, we could not get the translate result. src: %s, Error:  %s"%(
                 src, traceback.format_exc()))
-            return ""
 
     def _translate(self, src, proxies, src_template):
-        return getattr(self, self.site_choice().strip())(
-            src, proxies, src_template)
+        return getattr(self, random.choice(self.web_site).strip())(src, proxies, src_template)
 
     def youdao(self, src_data, proxies, src_template):
         """
@@ -181,6 +132,35 @@ class Translate:
                              timeout=self.translate_timeout, proxies=proxies)
         return src_template % tuple(
             "".join(map(lambda x: x["src_str"], json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
+
+    @staticmethod
+    def retry_wrapper(retry_times, error_handler=None):
+        """
+        重试装饰器
+        :param retry_times: 重试次数
+        :param error_handler: 重试异常处理函数
+        :return:
+        """
+        def out_wrapper(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                count = 0
+
+                while True:
+                    try:
+                        return func(*args, **kwargs)
+                    except Exception as e:
+                        count += 1
+
+                        if error_handler:
+                            result = error_handler(func.__name__, count, e, *args, **kwargs)
+                            if result:
+                                count -= 1
+
+                        if count >= retry_times:
+                            raise
+            return wrapper
+        return out_wrapper
 
     @classmethod
     def parse_args(cls):
