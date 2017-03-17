@@ -12,7 +12,12 @@ from argparse import ArgumentParser
 
 
 def retry_wrapper(retry_times, error_handler=None):
-
+    """
+    重试装饰器
+    :param retry_times: 重试次数
+    :param error_handler: 重试异常处理函数
+    :return:
+    """
     def out_wrapper(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -46,23 +51,26 @@ class Translate:
 
     def __init__(self, proxy_list="./proxy.list", web_site="youdao,baidu", proxy_auth=None, retry_times=10, translate_timeout=5, load_module=None):
         self.web_site = web_site.split(",")
-
-        if os.path.exists(proxy_list):
-            self.proxy_list = [i.strip() for i in open(proxy_list).readlines() if (i.strip() and i.strip()[0] != "#")]
         self.proxy = {}
         self.site_index = 0
         self.proxy_auth = proxy_auth
         self.retry_times = retry_times
         self.translate_timeout = translate_timeout
         self.site_func = dict()
+
+        if os.path.exists(proxy_list):
+            self.proxy_list = [i.strip() for i in open(proxy_list).readlines() if (i.strip() and i.strip()[0] != "#")]
+
         if load_module:
             sys.path.insert(0, os.getcwd())
             attr = vars(__import__(load_module, fromlist=load_module))
+
             for k, v in attr.items():
                 if hasattr(v, "__call__"):
                     self.site_func[k] = v
 
     def __getattr__(self, item):
+
         if item in self.site_func:
             return partial(self.site_func[item], self=self)
         raise AttributeError(item)
@@ -73,6 +81,7 @@ class Translate:
         :return: 代理
         """
         proxy = random.choice(self.proxy_list)
+
         if proxy:
             if self.proxy_auth:
                 return {"http": "http://%s@%s" % (self.proxy_auth, proxy)}
@@ -177,11 +186,11 @@ class Translate:
     def parse_args(cls):
         parser = ArgumentParser()
         parser.add_argument("-ws", "--web-site", help="Which site do you want to use for translating, split by `,`? default: baidu,youdao")
-        parser.add_argument("-pl", "--proxy-list", help="The proxy.list contains proxy to use for translate. default: ./proxy.list")
+        parser.add_argument("-pl", "--proxy-list", help="The proxy.list contains proxy to use for translating. default: ./proxy.list")
         parser.add_argument("-pa", "--proxy-auth", help="Proxy password if have. eg. user:password")
         parser.add_argument("-rt", "--retry-times", type=int, default=10, help="If translate failed retry times. default: 10")
         parser.add_argument("-tt", "--translate-timeout", type=int, default=5, help="Translate timeout. default: 5")
-        parser.add_argument("-lm", "--load-module", help="The module contains custom web site functions which may translate. eg: trans.google")
+        parser.add_argument("-lm", "--load-module", help="The module contains custom web site functions which may use for translating. eg: trans.google")
         parser.add_argument("src", help="The html you want to translate. ")
         data = vars(parser.parse_args())
         src = data.pop("src")
