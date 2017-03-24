@@ -42,7 +42,7 @@ optional arguments:
 ubuntu@dev:~/myprojects/translate_html$ translate my
 我的
 ubuntu@dev:~/myprojects/translate_html$ translate "<div>my</div><table name='this is a name' style='width: 100px;color: blue'>The style property inside the tag  won't be translate</table>"
-<div>我的</div><table style='width: 100px;color: blue'>标签内的样式属性不会翻译</table>
+<div>我的</div><table name='this is a name' style='width: 100px;color: blue'>标签内的样式属性不会被翻译</table>
 ```
 ### demo2
 自定义翻译函数
