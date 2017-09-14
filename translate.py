@@ -72,15 +72,14 @@ class Translate:
         """
         try:
             # 找出大于号和小于号之间的字符，使用换行符连接，进行翻译
-            pattern = re.compile(r"(^|>)([\s\S]*?)(<|$)")
+            pattern = re.compile(r"(?:^|(?<=>))([\s\S]*?)(?:(?=<)|$)")
             ls = re.findall(pattern, src.replace("\n", ""))
-            src_data = "\n".join(x[1] for x in ls if x[1].strip())
+            src_data = "\n".join(x.strip("\t ") for x in ls if x.strip())
             if src_data.strip():
                 # 对源中的%号进行转义
-                src = src.replace("%", "%%")
+                src_escape = src.replace("%", "%%")
                 # 将源中被抽离进行翻译的部分替换成`%s`， 如果被抽离部分没有实质内容（为空），则省略
-                src_template = re.sub(pattern, lambda x: "%s%s%s"%(
-                    x.group(1), "%s" if x.group(2).strip() else "", x.group(3)), src)
+                src_template = re.sub(pattern, lambda x: "%s" if x.group(1).strip() else "", src_escape)
                 return self.retry_wrapper(self.retry_times, self.trans_error_handler)(
                     self._translate)(src_data, self.proxy or self.proxy_choice(), src_template)
             else:
@@ -88,13 +87,14 @@ class Translate:
         except Exception:
             print("Error in translate, finally, we could not get the translate result. src: %s, Error:  %s"%(
                 src, traceback.format_exc()))
+            return src
 
     def _translate(self, src, proxies, src_template):
         return getattr(self, random.choice(self.web_site).strip())(src, proxies, src_template)
 
     def youdao(self, src_data, proxies, src_template):
         """
-        有道翻译的实现
+        有道翻译的实现(废弃)
         :param src_data: 原生数据
         :param proxies: 代理
         :param src_template: 原生数据模板
@@ -133,6 +133,23 @@ class Translate:
         return src_template % tuple(
             "".join(map(lambda x: x["src_str"], json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
 
+    def qq(self, src_data, proxies, src_template):
+        """
+        腾讯翻译的实现, 腾讯翻译最长只能翻译2000个字符
+        :param src_data: 原生数据
+        :param proxies: 代理
+        :param src_template: 原生数据模板
+        :return: 结果
+        """
+        url = 'http://fanyi.qq.com/api/translate'
+        import pdb
+        pdb.set_trace()
+        resp = requests.post(
+            url, data={'source': 'auto', 'target': 'en', 'sourceText': src_data},
+            headers=self.headers, timeout=self.translate_timeout, proxies=proxies)
+        return src_template % tuple(
+            record["targetText"] for record in json.loads(resp.text)["records"] if record.get("sourceText") != "\n")
+
     @staticmethod
     def retry_wrapper(retry_times, error_handler=None):
         """
@@ -165,7 +182,7 @@ class Translate:
     @classmethod
     def parse_args(cls):
         parser = ArgumentParser()
-        parser.add_argument("-ws", "--web-site", help="Which site do you want to use for translating, split by `,`? default: baidu,youdao")
+        parser.add_argument("-ws", "--web-site", help="Which site do you want to use for translating, split by `,`? default: qq,baidu")
         parser.add_argument("-pl", "--proxy-list", help="The proxy.list contains proxy to use for translating. default: ./proxy.list")
         parser.add_argument("-pa", "--proxy-auth", help="Proxy password if have. eg. user:password")
         parser.add_argument("-rt", "--retry-times", type=int, default=10, help="If translate failed retry times. default: 10")
