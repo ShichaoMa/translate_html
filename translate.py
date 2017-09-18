@@ -23,8 +23,7 @@ class Translate:
         "Accept-Language": "en-US,en;q=0.5",
     }
 
-    def __init__(self, proxy_list="./proxy.list", web_site="youdao,baidu",
-                 proxy_auth=None, retry_times=10, translate_timeout=5, load_module=None):
+    def __init__(self, web_site, proxy_list="./proxy.list", proxy_auth=None, retry_times=10, translate_timeout=5, load_module=None):
         self.web_site = web_site.split(",")
         self.proxy = {}
         self.proxy_auth = proxy_auth
@@ -149,6 +148,7 @@ class Translate:
         resp = requests.post(
             url, data={'source': 'auto', 'target': 'en', 'sourceText': src_data},
             headers=self.headers, timeout=self.translate_timeout, proxies=proxies)
+        print(resp.text)
         return src_template % tuple(
             record["targetText"] for record in json.loads(resp.text)["records"] if record.get("sourceText") != "\n")
 
@@ -208,16 +208,16 @@ class Translate:
     @classmethod
     def parse_args(cls):
         parser = ArgumentParser()
-        parser.add_argument("-ws", "--web-site", help="Which site do you want to use for translating, split by `,`? default: qq,baidu,google")
+        parser.add_argument("-ws", "--web-site", default="baidu,qq,google", help="Which site do you want to use for translating, split by `,`?")
         parser.add_argument("-pl", "--proxy-list", help="The proxy.list contains proxy to use for translating. default: ./proxy.list")
         parser.add_argument("-pa", "--proxy-auth", help="Proxy password if have. eg. user:password")
         parser.add_argument("-rt", "--retry-times", type=int, default=10, help="If translate failed retry times. default: 10")
         parser.add_argument("-tt", "--translate-timeout", type=int, default=5, help="Translate timeout. default: 5")
         parser.add_argument("-lm", "--load-module", help="The module contains custom web site functions which may use for translating. eg: trans.google")
-        parser.add_argument("src", help="The html you want to translate. ")
+        parser.add_argument("src", nargs="+", help="The html you want to translate. ")
         data = vars(parser.parse_args())
         src = data.pop("src")
-        return cls(**dict(filter(lambda x: x[1], data.items()))).translate(src)
+        return cls(**dict(filter(lambda x: x[1], data.items()))).translate(" ".join(src))
 
 
 def main():
