@@ -9,6 +9,7 @@ import traceback
 
 from functools import wraps, partial
 from argparse import ArgumentParser
+from googletrans.gtoken import TokenAcquirer
 
 
 class Translate:
@@ -30,6 +31,8 @@ class Translate:
         self.retry_times = retry_times
         self.translate_timeout = translate_timeout
         self.site_func = dict()
+        self.session = requests.Session()
+        self.acquirer = TokenAcquirer(session=self.session)
 
         if os.path.exists(proxy_list):
             self.proxy_list = [i.strip() for i in open(proxy_list).readlines() if (i.strip() and i.strip()[0] != "#")]
@@ -81,7 +84,8 @@ class Translate:
                 # 将源中被抽离进行翻译的部分替换成`%s`， 如果被抽离部分没有实质内容（为空），则省略
                 src_template = re.sub(pattern, lambda x: "%s" if x.group(1).strip() else "", src_escape)
                 return self.retry_wrapper(self.retry_times, self.trans_error_handler)(
-                    self._translate)(src_data, self.proxy or self.proxy_choice(), src_template)
+                    self._translate)(src_data, self.proxy or self.proxy_choice()
+                                     or self.proxy, src_template)
             else:
                 return src
         except Exception:
@@ -142,13 +146,35 @@ class Translate:
         :return: 结果
         """
         url = 'http://fanyi.qq.com/api/translate'
-        import pdb
-        pdb.set_trace()
         resp = requests.post(
             url, data={'source': 'auto', 'target': 'en', 'sourceText': src_data},
             headers=self.headers, timeout=self.translate_timeout, proxies=proxies)
         return src_template % tuple(
             record["targetText"] for record in json.loads(resp.text)["records"] if record.get("sourceText") != "\n")
+
+    def google(self, src_data,  proxies, src_template):
+        url = 'https://translate.google.cn/translate_a/single'
+        data = {
+        'client': 't',
+        'sl': "auto",
+        'tl': "zh",
+        'hl': "zh",
+        'dt': ['at', 'bd', 'ex', 'ld', 'md', 'qca', 'rw', 'rm', 'ss', 't'],
+        'ie': 'UTF-8',
+        'oe': 'UTF-8',
+        'otf': 1,
+        'ssel': 0,
+        'tsel': 0,
+        'tk': self.acquirer.do(src_data),
+        'q': src_data,
+        }
+        resp = self.session.get(url, params=data, headers=self.headers,
+                                timeout=self.translate_timeout, proxies=proxies)
+        return self.merge_conflict(src_template, [line[0] for line in json.loads(resp.text)[0]])
+
+    @staticmethod
+    def merge_conflict(src_template, returns):
+        return src_template % tuple(returns[:src_template.count("%s")])
 
     @staticmethod
     def retry_wrapper(retry_times, error_handler=None):
@@ -182,7 +208,7 @@ class Translate:
     @classmethod
     def parse_args(cls):
         parser = ArgumentParser()
-        parser.add_argument("-ws", "--web-site", help="Which site do you want to use for translating, split by `,`? default: qq,baidu")
+        parser.add_argument("-ws", "--web-site", help="Which site do you want to use for translating, split by `,`? default: qq,baidu,google")
         parser.add_argument("-pl", "--proxy-list", help="The proxy.list contains proxy to use for translating. default: ./proxy.list")
         parser.add_argument("-pa", "--proxy-auth", help="Proxy password if have. eg. user:password")
         parser.add_argument("-rt", "--retry-times", type=int, default=10, help="If translate failed retry times. default: 10")
