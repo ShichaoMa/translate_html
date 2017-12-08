@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import random
+import logging
 import requests
 import traceback
 
@@ -14,10 +15,10 @@ from . import sites
 from .tools import retry_wrapper
 
 
-__version__ = "1.1.0"
+__version__ = "1.1.4"
 
 
-class Translate:
+class Translate(object):
     """
         翻译类
     """
@@ -36,7 +37,6 @@ class Translate:
         self.proxy_auth = proxy_auth
         self.retry_times = retry_times
         self.translate_timeout = translate_timeout
-        self.site_func = dict()
 
         if os.path.exists(proxy_list):
             self.proxy_list = [i.strip() for i in open(proxy_list).readlines() if (i.strip() and i.strip()[0] != "#")]
@@ -52,22 +52,26 @@ class Translate:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
+    def set_logger(self, logger=None):
+        if not logger:
+            self.logger = logging.getLogger()
+            self.logger.setLevel(20)
+            self.logger.addHandler(logging.StreamHandler(sys.stdout))
+        else:
+            self.logger = logger
+            self.name = logger.name
+
     def load(self, module_str):
         if isinstance(module_str, str):
             sys.path.insert(0, os.getcwd())
             model = __import__(module_str, fromlist=module_str.split(".")[-1])
         else:
             model = module_str
-        attr = vars(model)
 
-        for k, v in attr.items():
+        for k in dir(model):
+            v = getattr(model, k)
             if hasattr(v, "__call__"):
-                self.site_func[k] = v
-
-    def __getattr__(self, item):
-        if item in self.site_func:
-            return partial(self.site_func[item], self)
-        raise AttributeError(item)
+                self.__dict__[k] = partial(v, self)
 
     def proxy_choice(self):
         return self.proxy_list and self.proxy_list[0] and {"http": "http://%s%s"%(
@@ -83,7 +87,7 @@ class Translate:
         :param kwargs: 重试参数的参数
         :return: 当返回True时，该异常不会计入重试次数
         """
-        print("Error in %s for retry %s times. Error: %s"%(func_name, retry_time, e))
+        self.logger.debug("Error in %s for retry %s times. Error: %s"%(func_name, retry_time, e))
         args[1].update(self.proxy_choice())
 
     def translate(self, src):
@@ -105,12 +109,10 @@ class Translate:
                 return retry_wrapper(self.retry_times, self.trans_error_handler)(
                     self._translate)(src_data, self.proxy or self.proxy_choice()
                                      or self.proxy, src_template)
-            else:
-                return src
         except Exception:
-            print("Error in translate, finally, we could not get the translate result. src: %s, Error:  %s"%(
+            self.logger.error("Error in translate, finally, we could not get the translate result. src: %s, Error:  %s"%(
                 src, traceback.format_exc()))
-            return src
+        return src
 
     def _translate(self, src, proxies, src_template):
         return getattr(self, random.choice(self.web_site).strip())(src, proxies, src_template)
@@ -133,6 +135,7 @@ def main():
     data = vars(parser.parse_args())
     src = data.pop("src")
     with Translate(**dict(filter(lambda x: x[1], data.items()))) as translator:
+        translator.set_logger()
         print(translator.translate(" ".join(src)))
 
 

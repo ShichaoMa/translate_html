@@ -12,6 +12,7 @@ class TestTranslate(unittest.TestCase):
 
     def test_baidu(self):
         with Translate("baidu") as t:
+            t.set_logger()
             self.assertContainEqual(t.translate("my name is tom, what about yours?"), "我")
 
     def test_google(self):
