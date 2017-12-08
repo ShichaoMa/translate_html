@@ -9,20 +9,17 @@ import traceback
 
 from functools import partial
 from argparse import ArgumentParser
+from abc import ABC, abstractmethod, abstractproperty
 from googletrans.gtoken import TokenAcquirer
 
 from . import sites
 from .tools import retry_wrapper
 
 
-__version__ = "1.1.4"
+__version__ = "1.1.7"
 
 
-class Translate(object):
-    """
-        翻译类
-    """
-    proxy_list = [None]
+class TranslateAdapter(ABC):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko)'
                       ' Chrome/41.0.2272.76 Safari/537.36',
@@ -30,19 +27,21 @@ class Translate(object):
         "Accept-Language": "en-US,en;q=0.5",
     }
 
-    def __init__(self, web_site, proxy_list="./proxy.list", proxy_auth=None,
-                 retry_times=10, translate_timeout=5, load_module=None):
-        self.web_site = web_site.split(",")
+    def __init__(self):
         self.proxy = {}
-        self.proxy_auth = proxy_auth
-        self.retry_times = retry_times
-        self.translate_timeout = translate_timeout
-
-        if os.path.exists(proxy_list):
-            self.proxy_list = [i.strip() for i in open(proxy_list).readlines() if (i.strip() and i.strip()[0] != "#")]
         self.load(sites)
-        if load_module:
-            self.load(load_module)
+
+    @abstractproperty
+    def web_site(self):
+        pass
+
+    @abstractproperty
+    def translate_timeout(self):
+        pass
+
+    @abstractproperty
+    def retry_times(self):
+        pass
 
     def __enter__(self):
         self.session = requests.Session()
@@ -73,9 +72,9 @@ class Translate(object):
             if hasattr(v, "__call__"):
                 self.__dict__[k] = partial(v, self)
 
+    @abstractmethod
     def proxy_choice(self):
-        return self.proxy_list and self.proxy_list[0] and {"http": "http://%s%s"%(
-            "%s@"%self.proxy_auth if self.proxy_auth else "", random.choice(self.proxy_list))}
+        pass
 
     def trans_error_handler(self, func_name, retry_time, e, *args, **kwargs):
         """
@@ -116,6 +115,43 @@ class Translate(object):
 
     def _translate(self, src, proxies, src_template):
         return getattr(self, random.choice(self.web_site).strip())(src, proxies, src_template)
+
+
+class Translate(TranslateAdapter):
+    """
+        翻译类
+    """
+    proxy_list = [None]
+
+    def __init__(self, web_site=None, proxy_list=None, proxy_auth=None,
+                 retry_times=10, translate_timeout=5, load_module=None):
+        self._web_site = web_site.split(",")
+        self.proxy = {}
+        self.proxy_auth = proxy_auth
+        self._retry_times = retry_times
+        self._translate_timeout = translate_timeout
+
+        if os.path.exists(proxy_list):
+            self.proxy_list = [i.strip() for i in open(proxy_list).readlines() if (i.strip() and i.strip()[0] != "#")]
+        if load_module:
+            self.load(load_module)
+        super(Translate, self).__init__()
+
+    @property
+    def web_site(self):
+        return self._web_site
+
+    @property
+    def translate_timeout(self):
+        return self._translate_timeout
+
+    @property
+    def retry_times(self):
+        return self._retry_times
+
+    def proxy_choice(self):
+        return self.proxy_list and self.proxy_list[0] and {"http": "http://%s%s"%(
+            "%s@"%self.proxy_auth if self.proxy_auth else "", random.choice(self.proxy_list))}
 
 
 def main():
