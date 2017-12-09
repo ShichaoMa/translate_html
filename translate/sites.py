@@ -62,6 +62,12 @@ def qq(self, src_data, proxies, src_template):
 
 
 def google(self, src_data, proxies, src_template):
+    try:
+        from googletrans.gtoken import TokenAcquirer
+    except ImportError:
+        import warnings, sys
+        warnings.warn("使用谷歌翻译需要安装 googletrans. ")
+        sys.exit(1)
     url = 'https://translate.google.cn/translate_a/single'
     data = {
         'client': 't',
@@ -74,7 +80,7 @@ def google(self, src_data, proxies, src_template):
         'otf': 1,
         'ssel': 0,
         'tsel': 0,
-        'tk': self.acquirer.do(src_data),
+        'tk': TokenAcquirer(session=self.session, host="translate.google.cn").do(src_data),
         'q': src_data,
     }
     resp = self.session.get(url, params=data, headers=self.headers,

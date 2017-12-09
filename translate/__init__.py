@@ -10,13 +10,12 @@ import traceback
 from functools import partial
 from argparse import ArgumentParser
 from abc import ABC, abstractmethod, abstractproperty
-from googletrans.gtoken import TokenAcquirer
 
 from . import sites
 from .tools import retry_wrapper
 
 
-__version__ = "1.1.7"
+__version__ = "1.1.9"
 
 
 class TranslateAdapter(ABC):
@@ -45,7 +44,6 @@ class TranslateAdapter(ABC):
 
     def __enter__(self):
         self.session = requests.Session()
-        self.acquirer = TokenAcquirer(session=self.session)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -131,7 +129,7 @@ class Translate(TranslateAdapter):
         self._retry_times = retry_times
         self._translate_timeout = translate_timeout
 
-        if os.path.exists(proxy_list):
+        if proxy_list and os.path.exists(proxy_list):
             self.proxy_list = [i.strip() for i in open(proxy_list).readlines() if (i.strip() and i.strip()[0] != "#")]
         if load_module:
             self.load(load_module)
