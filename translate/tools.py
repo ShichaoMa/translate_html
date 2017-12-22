@@ -6,7 +6,7 @@ import requests
 
 
 def merge_conflict(src_template, returns):
-    return src_template % tuple(returns[:src_template.count("%s")])
+    return src_template % tuple(returns[:src_template.count("%s")]) + "。".join(returns[src_template.count("%s"):])
 
 
 def retry_wrapper(retry_times, error_handler=None):
