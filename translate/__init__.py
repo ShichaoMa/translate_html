@@ -9,13 +9,13 @@ import traceback
 
 from functools import partial
 from argparse import ArgumentParser
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 
 from . import sites
 from .tools import retry_wrapper
 
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 
 class TranslateAdapter(ABC):
@@ -30,15 +30,18 @@ class TranslateAdapter(ABC):
         self.proxy = {}
         self.load(sites)
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def web_site(self):
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def translate_timeout(self):
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def retry_times(self):
         pass
 
@@ -126,7 +129,7 @@ class Translate(TranslateAdapter):
     retry_times = None
     translate_timeout = None
 
-    def __init__(self, web_site=None, proxy_list=None, proxy_auth=None,
+    def __init__(self, web_site="baidu,google,qq", proxy_list=None, proxy_auth=None,
                  retry_times=10, translate_timeout=5, load_module=None):
         self.web_site = web_site.split(",")
         self.proxy = {}
