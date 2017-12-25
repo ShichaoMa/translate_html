@@ -15,7 +15,7 @@ from . import sites
 from .tools import retry_wrapper
 
 
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 
 class TranslateAdapter(ABC):
