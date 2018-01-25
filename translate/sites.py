@@ -1,5 +1,6 @@
+import re
 import json
-from .tools import merge_conflict, TokenAcquirer
+from .tools import merge_conflict, TokenAcquirer, gen_sign
 
 
 def youdao(self, src_data, proxies, src_template):
@@ -25,7 +26,7 @@ def youdao(self, src_data, proxies, src_template):
         map(lambda x: x["tgt"], y)), json.loads(resp.text)["translateResult"]))
 
 
-def baidu(self, src_data, proxies, src_template):
+def baidu(self, src_data, proxies, src_template, tokens=[]):
     """
     百度翻译的实现, 百度翻译最长只能翻译5000个字符
     :param src_data: 原生数据
@@ -33,16 +34,26 @@ def baidu(self, src_data, proxies, src_template):
     :param src_template: 原生数据模板
     :return: 结果
     """
+    if not tokens:
+        resp = self.session.post("http://fanyi.baidu.com/")
+        tokens.append(re.search(r"token: '(\w+)'", resp.text).group(1))
+        tokens.append(re.search(r"window.gtk = '(.*?)'", resp.text).group(1))
     url = "http://fanyi.baidu.com/v2transapi"
     resp = self.session.post(url=url, data={
         'from': 'en',
         'to': 'zh',
         'transtype': 'realtime',
         'query': src_data,
-        'simple_means_flag': 3}, headers=self.headers,
+        'simple_means_flag': 3,
+        'token': tokens[0],
+        "sign": gen_sign(tokens[1], src_data)}, headers=self.headers,
                          timeout=self.translate_timeout, proxies=proxies)
-    return src_template % tuple(
-        "".join(map(lambda x: x["src_str"], json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
+    try:
+        return src_template % tuple(
+            "".join(map(lambda x: x["src_str"], json.loads(resp.text)["trans_result"]['phonetic'])).split("\n"))
+    except Exception:
+        tokens.clear()
+        raise
 
 
 def qq(self, src_data, proxies, src_template):

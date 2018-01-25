@@ -1,7 +1,8 @@
+import re
 import ast
 import math
-import re
 import time
+import ctypes
 import requests
 
 
@@ -35,6 +36,71 @@ def retry_wrapper(retry_times, error_handler=None):
                         raise
         return wrapper
     return out_wrapper
+
+
+def int_overflow(val):
+    maxint = 2147483647
+    if not -maxint-1 <= val <= maxint:
+        val = (val + (maxint + 1)) % (2 * (maxint + 1)) - maxint - 1
+    return val
+
+
+def unsigned_right_shitf(n, i):
+    # 数字小于0，则转为32位无符号uint
+    if n<0:
+        n = ctypes.c_uint32(n).value
+    # 正常位移位数是为正数，但是为了兼容js之类的，负数就右移变成左移好了
+    if i<0:
+        return -int_overflow(n << abs(i))
+    #print(n)
+    return int_overflow(n >> i)
+
+
+def n(r, o):
+    for t in range(0, len(o) - 2, 3):
+        a = o[t + 2]
+        a = ord(a) - 87 if a >= "a" else int(a)
+        a = unsigned_right_shitf(r, a) if "+" == o[t + 1] else r << a
+        r = r + a & 4294967295 if "+" == o[t] else r ^ a
+    return r
+
+
+def gen_sign(gtk, message):
+    """百度专用生成sign"""
+    if len(message) > 30:
+        message = message[0: 10] + message[len(message)//2 - 5: len(message)//2 + 5] + message[-10:]
+    S = list()
+    v = 0
+    for ch in message:
+        A = ord(ch)
+        if 128 > A:
+            S.append(A)
+        elif 2048 > A:
+            S.append(A >> 6 | 192)
+        elif 55296 == (64512 & A) and v + 1 < len(message) and 56320 == (64512 & ord(message[v+1])):
+            A = 65536 + ((1023 & A) << 10) + (1023 & ord(message[v]))
+            S.append(A >> 18 | 240)
+            S.append(A >> 12 & 63 | 128)
+        else:
+            S.append(A >> 12 | 224)
+            S.append(A >> 6 & 63 | 128)
+            S.append(63 & A | 128)
+    m, s = gtk.split(".")
+    F = chr(43) + chr(45) + chr(97) + chr(94) + chr(43) + chr(54)
+    D = chr(43) + chr(45) + chr(51) + chr(94) + chr(43) + chr(98) + chr(43) + chr(45) + chr(102)
+    m = int(m)
+    s = int(s)
+    r = m
+    for b in S:
+        r = r + b
+        r = n(r, F)
+    r = n(r, D)
+    r ^= s
+    if 0 > r:
+        r = (2147483647 & r) + 2147483648
+
+    r %= 1e6
+    return "%s.%s" % (int(r), int(r) ^ m)
 
 
 class TokenAcquirer(object):
