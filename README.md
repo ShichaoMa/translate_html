@@ -4,6 +4,15 @@
 ## INSTALL
 ```
 pip install translate-html
+
+madeMac-mini:toolkit mashichao$ translate -ws bing "what a fuck day it is."
+真是该死的一天
+madeMac-mini:toolkit mashichao$ translate -ws google "what a fuck day it is."
+什么是他妈的一天。
+madeMac-mini:toolkit mashichao$ translate -ws qq "what a fuck day it is."
+今天真是个该死的日子。
+madeMac-mini:toolkit mashichao$ translate -ws baidu "what a fuck day it is."
+他妈的是多么糟糕的一天。
 ```
 
 ## USAGE
