@@ -75,48 +75,8 @@ def n(r, o):
         r = r + a & 4294967295 if "+" == o[t] else r ^ a
     return r
 
-
-def gen_sign(gtk, message):
-    if len(message) > 30:
-        message = message[0: 10] + message[len(message)//2 - 5: len(message)//2 + 5] + message[-10:]
-    S = list()
-    v = 0
-    for ch in message:
-        A = ord(ch)
-        if 128 > A:
-            S.append(A)
-        elif 2048 > A:
-            S.append(A >> 6 | 192)
-        elif 55296 == (64512 & A) and v + 1 < len(message) and 56320 == (64512 & ord(message[v+1])):
-            A = 65536 + ((1023 & A) << 10) + (1023 & ord(message[v]))
-            S.append(A >> 18 | 240)
-            S.append(A >> 12 & 63 | 128)
-        else:
-            S.append(A >> 12 | 224)
-            S.append(A >> 6 & 63 | 128)
-            S.append(63 & A | 128)
-    m, s = gtk.split(".")
-    F = chr(43) + chr(45) + chr(97) + chr(94) + chr(43) + chr(54)
-    D = chr(43) + chr(45) + chr(51) + chr(94) + chr(43) + chr(98) + chr(43) + chr(45) + chr(102)
-    m = int(m)
-    s = int(s)
-    r = m
-    for b in S:
-        r = r + b
-        r = n(r, F)
-    r = n(r, D)
-    r ^= s
-    if 0 > r:
-        r = (2147483647 & r) + 2147483648
-
-    r %= 1e6
-    return "%s.%s" % (int(r), int(r) ^ m)
-
-
-print(gen_sign("320305.131321201", "you"))
-
 from translate import Translate
 
 with Translate("baidu") as t:
     t.set_logger()
-    print(t.translate("my name is tom, what about yours?"))
+    print(t.translate("my name is tom, i come from nanjing, I like eat shit, what about yours?"))

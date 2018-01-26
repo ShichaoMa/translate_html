@@ -15,13 +15,20 @@ class TestTranslate(unittest.TestCase):
             t.set_logger()
             self.assertContainEqual(t.translate("my name is tom, what about yours?"), "我")
 
-    # def test_google(self):
-    #     with Translate("google") as t:
-    #         self.assertContainEqual(t.translate("my name is tom, what about yours?"), "我")
-    #
-    # def test_qq(self):
-    #     with Translate("qq") as t:
-    #         self.assertContainEqual(t.translate("my name is tom, what about yours?"), "我")
+    def test_google(self):
+        with Translate("google") as t:
+            t.set_logger()
+            self.assertContainEqual(t.translate("my name is tom, what about yours?"), "我")
+
+    def test_qq(self):
+        with Translate("qq") as t:
+            t.set_logger()
+            self.assertContainEqual(t.translate("my name is tom, what about yours?"), "我")
+
+    def test_bing(self):
+        with Translate("bing") as t:
+            t.set_logger()
+            self.assertContainEqual(t.translate("my name is tom, what about yours?"), "我")
 
 
 if __name__ == "__main__":

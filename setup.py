@@ -4,7 +4,7 @@ try:
 except:
     from distutils.core import setup
 
-VERSION = '1.2.3'
+VERSION = '1.2.4'
 
 AUTHOR = "cn"
 
@@ -24,7 +24,7 @@ KEYWORDS = "translate html chinese tag"
 
 LICENSE = "MIT"
 
-PACKAGES = ["translate"]
+MODULES = ["translate"]
 
 setup(
     name = NAME,
@@ -47,8 +47,8 @@ setup(
     author_email = AUTHOR_EMAIL,
     url = URL,
     license = LICENSE,
-    packages = PACKAGES,
-    install_requires=["requests"],
+    py_modules = MODULES,
+    install_requires=["toolkity>=1.4.7"],
     include_package_data=True,
     zip_safe=True,
 )
