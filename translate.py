@@ -2,6 +2,7 @@
 import os
 import random
 
+from operator import itemgetter
 from argparse import ArgumentParser
 from toolkit.translator.translate_adapter import TranslateAdapter
 
@@ -17,7 +18,7 @@ class Translate(TranslateAdapter):
     retry_times = None
     translate_timeout = None
 
-    def __init__(self, web_site="baidu,google,qq", proxy_list=None, proxy_auth=None,
+    def __init__(self, web_site=None, proxy_list=None, proxy_auth=None,
                  retry_times=10, translate_timeout=5, load_module=None):
         self.web_site = web_site.split(",")
         self.proxy = {}
@@ -32,8 +33,9 @@ class Translate(TranslateAdapter):
         super(Translate, self).__init__()
 
     def proxy_choice(self):
-        return self.proxy_list and self.proxy_list[0] and {"http": "http://%s%s"%(
-            "%s@"%self.proxy_auth if self.proxy_auth else "", random.choice(self.proxy_list))}
+        if self.proxy_list and self.proxy_list[0]:
+            proxy = "http://%s%s" % ("%s@" % self.proxy_auth if self.proxy_auth else "", random.choice(self.proxy_list))
+            return {"http": proxy, "https": proxy}
 
 
 def main():
@@ -52,7 +54,7 @@ def main():
     parser.add_argument("src", nargs="+", help="The html you want to translate. ")
     data = vars(parser.parse_args())
     src = data.pop("src")
-    with Translate(**dict(filter(lambda x: x[1], data.items()))) as translator:
+    with Translate(**dict(filter(itemgetter(1), data.items()))) as translator:
         translator.set_logger()
         print(translator.translate(" ".join(src)))
 
